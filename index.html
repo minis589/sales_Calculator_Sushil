@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Store Hourly Target Calculator</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --navy: #1B2A4A;
+      --navy-deep: #0F1D36;
+      --navy-mid: #243B5E;
+      --slate: #64748B;
+      --slate-light: #94A3B8;
+      --ice: #F0F4F8;
+      --white: #FFFFFF;
+      --green: #10B981;
+      --green-bg: #D1FAE5;
+      --green-text: #065F46;
+      --yellow: #F59E0B;
+      --yellow-bg: #FEF3C7;
+      --yellow-text: #92400E;
+      --red: #EF4444;
+      --red-bg: #FEE2E2;
+      --red-text: #991B1B;
+      --blue-accent: #3B82F6;
+      --card-shadow: 0 1px 3px rgba(15, 29, 54, 0.08), 0 4px 14px rgba(15, 29, 54, 0.04);
+      --card-shadow-hover: 0 4px 12px rgba(15, 29, 54, 0.12), 0 8px 24px rgba(15, 29, 54, 0.06);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--ice);
+      color: #1E293B;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy) 50%, var(--navy-mid) 100%);
+      padding: 28px 40px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 4px 20px rgba(15, 29, 54, 0.3);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: -0.02em;
+    }
+
+    .header h1 span {
+      color: var(--blue-accent);
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--slate-light);
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+      }
+
+      50% {
+        opacity: 0.7;
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+      }
+    }
+
+    .refresh-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--white);
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .refresh-btn.loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    /* ── KPI STRIP ── */
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .kpi-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 14px 18px;
+      transition: background 0.2s;
+    }
+
+    .kpi-card:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--slate-light);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .kpi-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--white);
+    }
+
+    /* ── CLUSTER SECTIONS ── */
+    .cluster-section {
+      margin-bottom: 8px;
+    }
+
+    .cluster-header {
+      margin: 0 40px;
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 4px;
+    }
+
+    .cluster-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .cluster-icon {
+      font-size: 20px;
+    }
+
+    .cluster-name {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .cluster-count {
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0.7;
+      margin-left: auto;
+    }
+
+    .cluster-kpis {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .cluster-kpi {
+      font-size: 12px;
+      color: #475569;
+    }
+
+    .cluster-kpi strong {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* ── STORE GRID ── */
+    .grid-container {
+      padding: 16px 40px 24px;
+    }
+
+    .store-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── STORE CARD ── */
+    .store-card {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      transition: box-shadow 0.25s, transform 0.25s;
+    }
+
+    .store-card:hover {
+      box-shadow: var(--card-shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      background: var(--navy);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-store-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    .card-date {
+      font-size: 11px;
+      color: var(--slate-light);
+    }
+
+    .status-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-no_data {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--slate-light);
+    }
+
+    .status-on_track {
+      background: var(--green-bg);
+      color: var(--green-text);
+    }
+
+    .status-at_risk {
+      background: var(--yellow-bg);
+      color: var(--yellow-text);
+    }
+
+    .status-behind {
+      background: var(--red-bg);
+      color: var(--red-text);
+    }
+
+    .status-complete {
+      background: var(--green-bg);
+      color: var(--green-text);
+    }
+
+    .card-body {
+      padding: 14px 16px 8px;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 5px 0;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: var(--slate);
+    }
+
+    .metric-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: #1E293B;
+    }
+
+    .metric-value.empty {
+      color: var(--slate-light);
+      font-style: italic;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .metric-row.highlight {
+      background: #F0FDF4;
+      margin: 4px -16px;
+      padding: 6px 16px;
+      border-bottom: none;
+    }
+
+    .metric-row.highlight .metric-value {
+      color: var(--green-text);
+      font-weight: 600;
+    }
+
+    /* Ready Reply */
+    .ready-reply {
+      margin: 8px 0 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.6;
+      border-left: 3px solid;
+    }
+
+    .ready-reply.no_data {
+      background: #FEF2F2;
+      border-color: var(--red);
+      color: var(--red-text);
+    }
+
+    .ready-reply.on_track {
+      background: #F0FDF4;
+      border-color: var(--green);
+      color: var(--green-text);
+    }
+
+    .ready-reply.at_risk {
+      background: #FFFBEB;
+      border-color: var(--yellow);
+      color: var(--yellow-text);
+    }
+
+    .ready-reply.behind {
+      background: #FEF2F2;
+      border-color: var(--red);
+      color: var(--red-text);
+    }
+
+    .ready-reply.complete {
+      background: #F0FDF4;
+      border-color: var(--green);
+      color: var(--green-text);
+    }
+
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: 1px solid #CBD5E1;
+      color: var(--slate);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 6px;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .copy-btn:hover {
+      background: var(--navy);
+      color: var(--white);
+      border-color: var(--navy);
+    }
+
+    .copy-btn.copied {
+      background: var(--green);
+      color: var(--white);
+      border-color: var(--green);
+    }
+
+    /* ── COPY ALL ── */
+    .copy-all-bar {
+      padding: 0 40px 8px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .copy-all-btn {
+      background: var(--navy);
+      color: var(--white);
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-all-btn:hover {
+      background: var(--navy-deep);
+    }
+
+    .copy-all-btn.copied {
+      background: var(--green);
+    }
+
+    /* ── LOADING ── */
+    .loading-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #E2E8F0;
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      font-size: 14px;
+      color: var(--slate);
+    }
+
+    /* ── ERROR ── */
+    .error-box {
+      max-width: 500px;
+      margin: 60px auto;
+      padding: 24px;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .error-box h3 {
+      color: var(--red-text);
+      margin-bottom: 8px;
+    }
+
+    .error-box p {
+      font-size: 13px;
+      color: var(--red-text);
+      line-height: 1.6;
+    }
+
+    /* ── COUNTDOWN ── */
+    .countdown {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--slate-light);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .header {
+        padding: 20px 16px 16px;
+      }
+
+      .kpi-strip {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .kpi-value {
+        font-size: 18px;
+      }
+
+      .grid-container {
+        padding: 12px 16px 20px;
+      }
+
+      .store-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header h1 {
+        font-size: 20px;
+      }
+
+      .copy-all-bar {
+        padding: 0 16px 8px;
+      }
+
+      .cluster-header {
+        margin: 0 16px;
+        padding: 12px 14px;
+      }
+
+      .cluster-name {
+        font-size: 16px;
+      }
+
+      .cluster-kpis {
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <div class="header">
+    <div class="header-top">
+      <h1>Store Hourly <span>Target</span> Calculator</h1>
+      <div class="header-meta">
+        <span><span class="live-dot"></span> Live</span>
+        <span id="dateDisplay">--</span>
+        <span class="countdown" id="countdown">Next refresh: --:--</span>
+        <button class="refresh-btn" id="refreshBtn" onclick="loadData()">⟳ Refresh</button>
+      </div>
+    </div>
+    <div class="kpi-strip">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Day Target</div>
+        <div class="kpi-value" id="kpiTarget">--</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Sales Till Time</div>
+        <div class="kpi-value" id="kpiSales">--</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Overall Achievement %</div>
+        <div class="kpi-value" id="kpiAchievement">--</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Stores On Track</div>
+        <div class="kpi-value" id="kpiOnTrack">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ MAIN CONTENT ═══════════ -->
+  <div id="mainContent">
+    <div class="loading-screen" id="loadingScreen">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading store data from both sheets...</div>
+    </div>
+  </div>
+
+  <script>
+    // ╔══════════════════════════════════════════════════════════╗
+    // ║  CONFIGURATION — Paste your Apps Script Web App URL     ║
+    // ╚══════════════════════════════════════════════════════════╝
+
+    var API_URL = "https://script.google.com/macros/s/AKfycbwhusFPcxwlxk5tr_0_PlaP38yNJDhMCa8F81JDRcacdT1hh10Fa9NYrAcWeiM_XIO7/exec";
+    // Example: "https://script.google.com/macros/s/AKfycbx.../exec"
+
+    // ════════════════════════════════════════════════════════════
+
+    var allStoreData = null;
+    var REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    var countdownTimer = null;
+    var nextRefreshTime = null;
+
+    // ── Format helpers ──
+    function formatINR(num) {
+      if (!num || isNaN(num)) return "0";
+      var isNeg = num < 0;
+      num = Math.abs(Math.round(num));
+      var str = num.toString();
+      var lastThree = str.substring(str.length - 3);
+      var other = str.substring(0, str.length - 3);
+      if (other !== "") lastThree = other.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree;
+      return (isNeg ? "-" : "") + lastThree;
+    }
+
+    function formatRupee(num) {
+      if (!num || isNaN(num)) return "--";
+      if (num >= 100000) return "₹" + (num / 100000).toFixed(2) + " L";
+      return "₹" + formatINR(num);
+    }
+
+    // ── Load data from Apps Script API ──
+    function loadData() {
+      var btn = document.getElementById("refreshBtn");
+      btn.classList.add("loading");
+      btn.textContent = "⟳ Loading...";
+
+      fetch(API_URL)
+        .then(function (response) {
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          return response.json();
+        })
+        .then(function (data) {
+          btn.classList.remove("loading");
+          btn.textContent = "⟳ Refresh";
+          if (data && data.success) {
+            allStoreData = data;
+            renderDashboard(data);
+            startCountdown();
+          } else {
+            showError(data ? data.error : "No data returned");
+          }
+        })
+        .catch(function (err) {
+          btn.classList.remove("loading");
+          btn.textContent = "⟳ Refresh";
+          showError(err.message || err.toString());
+        });
+    }
+
+    // ── Render dashboard grouped by clusters ──
+    function renderDashboard(data) {
+      document.getElementById("dateDisplay").textContent = data.date + " · " + data.timeNow;
+      document.getElementById("kpiTarget").textContent = formatRupee(data.totalDayTarget);
+      document.getElementById("kpiSales").textContent = data.totalSalesTillTime > 0 ? formatRupee(data.totalSalesTillTime) : "--";
+      document.getElementById("kpiAchievement").textContent = data.totalSalesTillTime > 0 ? data.overallAchievement.toFixed(1) + "%" : "--";
+      document.getElementById("kpiOnTrack").textContent = data.storesWithData > 0 ? data.storesOnTrack + " / " + data.totalStores : "--";
+
+      // Group stores by cluster
+      var clusterGroups = {};
+      var clusterOrder = data.clusterNames || [];
+      for (var i = 0; i < data.stores.length; i++) {
+        var s = data.stores[i];
+        var cl = s.cluster || "Other";
+        if (!clusterGroups[cl]) clusterGroups[cl] = [];
+        clusterGroups[cl].push({ store: s, globalIdx: i });
+      }
+
+      var clusterColors = {
+        "Champions": { bg: "#DBEAFE", border: "#3B82F6", text: "#1E40AF", icon: "🏆" },
+        "Strikers": { bg: "#FEF3C7", border: "#F59E0B", text: "#92400E", icon: "⚡" },
+        "Titans": { bg: "#E0E7FF", border: "#6366F1", text: "#3730A3", icon: "🔱" },
+        "Warriors": { bg: "#D1FAE5", border: "#10B981", text: "#065F46", icon: "⚔️" }
+      };
+
+      var html = '<div class="copy-all-bar"><button class="copy-all-btn" onclick="copyAllReplies()">📋 Copy All Ready Replies</button></div>';
+
+      for (var c = 0; c < clusterOrder.length; c++) {
+        var clName = clusterOrder[c];
+        var group = clusterGroups[clName] || [];
+        if (group.length === 0) continue;
+
+        var colors = clusterColors[clName] || { bg: "#F1F5F9", border: "#94A3B8", text: "#475569", icon: "📌" };
+
+        // Cluster summary
+        var clTarget = 0, clSales = 0, clStores = group.length, clOnTrack = 0;
+        for (var g = 0; g < group.length; g++) {
+          clTarget += group[g].store.dayTarget;
+          clSales += group[g].store.saleTillTime;
+          if (group[g].store.status === "on_track" || group[g].store.status === "complete") clOnTrack++;
+        }
+        var clAch = clTarget > 0 ? ((clSales / clTarget) * 100).toFixed(1) : "0";
+
+        html += '<div class="cluster-section">';
+        html += '<div class="cluster-header" style="border-left:4px solid ' + colors.border + '; background:' + colors.bg + ';">';
+        html += '<div class="cluster-title-row">';
+        html += '<span class="cluster-icon">' + colors.icon + '</span>';
+        html += '<span class="cluster-name" style="color:' + colors.text + ';">' + clName + '</span>';
+        html += '<span class="cluster-count" style="color:' + colors.text + ';">' + clStores + ' stores</span>';
+        html += '</div>';
+        html += '<div class="cluster-kpis">';
+        html += '<span class="cluster-kpi">Target: <strong>₹' + formatINR(Math.round(clTarget)) + '</strong></span>';
+        html += '<span class="cluster-kpi">Sales: <strong>' + (clSales > 0 ? '₹' + formatINR(Math.round(clSales)) : '--') + '</strong></span>';
+        html += '<span class="cluster-kpi">Achievement: <strong>' + (clSales > 0 ? clAch + '%' : '--') + '</strong></span>';
+        html += '<span class="cluster-kpi">On Track: <strong>' + clOnTrack + '/' + clStores + '</strong></span>';
+        html += '</div></div>';
+
+        html += '<div class="grid-container"><div class="store-grid">';
+        for (var j = 0; j < group.length; j++) {
+          html += buildStoreCard(group[j].store, data.date, group[j].globalIdx);
+        }
+        html += '</div></div></div>';
+      }
+
+      // "Other" cluster for unmapped stores
+      if (clusterGroups["Other"] && clusterGroups["Other"].length > 0) {
+        var ot = clusterGroups["Other"];
+        html += '<div class="cluster-section"><div class="cluster-header" style="border-left:4px solid #94A3B8;background:#F1F5F9;">';
+        html += '<div class="cluster-title-row"><span class="cluster-icon">📌</span>';
+        html += '<span class="cluster-name" style="color:#475569;">Other</span>';
+        html += '<span class="cluster-count" style="color:#475569;">' + ot.length + ' stores</span></div></div>';
+        html += '<div class="grid-container"><div class="store-grid">';
+        for (var o = 0; o < ot.length; o++) html += buildStoreCard(ot[o].store, data.date, ot[o].globalIdx);
+        html += '</div></div></div>';
+      }
+
+      document.getElementById("mainContent").innerHTML = html;
+    }
+
+    // ── Build one store card ──
+    function buildStoreCard(s, dateStr, idx) {
+      var statusLabel = {
+        no_data: "No Data", on_track: "On Track", at_risk: "At Risk",
+        behind: "Behind", complete: "Complete"
+      };
+
+      var c = '<div class="store-card">';
+      c += '<div class="card-header"><div><div class="card-store-name">' + s.storeName + '</div>';
+      c += '<div class="card-date">' + dateStr + '</div></div>';
+      c += '<span class="status-badge status-' + s.status + '">' + (statusLabel[s.status] || "") + '</span></div>';
+      c += '<div class="card-body">';
+      c += mRow("Day Target", "₹" + formatINR(s.dayTarget));
+      c += mRow("Time Now", s.timeNow, !s.hasData);
+      c += mRow("Sales Till Time", s.hasData ? "₹" + formatINR(s.saleTillTime) : "", !s.hasData);
+      c += mRow("Bills Till Time", s.hasData ? s.billsTillTime : "", !s.hasData);
+      c += mRow("Staff Count", s.hasData ? s.staffCount : "", !s.hasData);
+      c += mRow("Hours Passed", s.hoursPassed);
+      c += mRow("Current Hourly Avg", s.hasData && s.currentHourlyAvg > 0 ? "₹" + formatINR(s.currentHourlyAvg) : "");
+      c += mRow("Balance Target", "₹" + formatINR(s.balanceTarget));
+      c += mRow("Balance Hours", s.balanceHours);
+      c += mHL("Required Hourly Avg Now", s.hasData ? "₹" + formatINR(s.requiredHourlyAvgNow) : "");
+      c += mRow("ATV", s.hasData && s.atv > 0 ? "₹" + formatINR(s.atv) : "");
+      c += mHL("Per Staff Next Hour Target", s.hasData && s.perStaffNextHourTarget > 0 ? "₹" + formatINR(s.perStaffNextHourTarget) : "");
+      c += mRow("Bills Needed Next Hour", s.hasData && s.billsNeededNextHour > 0 ? s.billsNeededNextHour : "");
+
+      c += '<div class="ready-reply ' + s.status + '"><strong>Ready Reply</strong><br>' + s.readyReply;
+      c += '<br><button class="copy-btn" onclick="copyReply(' + idx + ', this)">📋 Copy</button></div>';
+      c += '</div></div>';
+      return c;
+    }
+
+    function mRow(label, value, isEmpty) {
+      var cls = (!value && value !== 0) || isEmpty ? ' class="metric-value empty"' : ' class="metric-value"';
+      var disp = (!value && value !== 0) || isEmpty ? "" : value;
+      return '<div class="metric-row"><span class="metric-label">' + label + '</span><span' + cls + '>' + disp + '</span></div>';
+    }
+
+    function mHL(label, value) {
+      var cls = !value ? ' class="metric-value empty"' : ' class="metric-value"';
+      return '<div class="metric-row highlight"><span class="metric-label">' + label + '</span><span' + cls + '>' + (value || "") + '</span></div>';
+    }
+
+    // ── Copy single reply ──
+    function copyReply(idx, btn) {
+      if (!allStoreData || !allStoreData.stores[idx]) return;
+      navigator.clipboard.writeText(allStoreData.stores[idx].readyReply).then(function () {
+        btn.classList.add("copied"); btn.textContent = "✓ Copied!";
+        setTimeout(function () { btn.classList.remove("copied"); btn.textContent = "📋 Copy"; }, 2000);
+      });
+    }
+
+    // ── Copy all replies ──
+    function copyAllReplies() {
+      if (!allStoreData) return;
+      var text = allStoreData.stores.map(function (s) {
+        return "▸ " + s.storeName + " (" + (s.cluster || "") + ")\n" + s.readyReply;
+      }).join("\n\n");
+      var btn = document.querySelector(".copy-all-btn");
+      navigator.clipboard.writeText(text).then(function () {
+        btn.classList.add("copied"); btn.textContent = "✓ All Copied!";
+        setTimeout(function () { btn.classList.remove("copied"); btn.textContent = "📋 Copy All Ready Replies"; }, 2000);
+      });
+    }
+
+    // ── Countdown timer ──
+    function startCountdown() {
+      if (countdownTimer) clearInterval(countdownTimer);
+      nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+      countdownTimer = setInterval(function () {
+        var rem = Math.max(0, nextRefreshTime - Date.now());
+        var m = Math.floor(rem / 60000);
+        var sec = Math.floor((rem % 60000) / 1000);
+        document.getElementById("countdown").textContent = "Next refresh: " + m + ":" + (sec < 10 ? "0" : "") + sec;
+        if (rem <= 0) { clearInterval(countdownTimer); loadData(); }
+      }, 1000);
+    }
+
+    // ── Error display ──
+    function showError(msg) {
+      document.getElementById("mainContent").innerHTML =
+        '<div class="error-box"><h3>⚠️ Could not load data</h3><p>' + msg + '</p>' +
+        '<p style="margin-top:12px;font-size:12px;">Check: 1) Apps Script is deployed as Web App 2) API_URL is correct in this file 3) Both Spreadsheet IDs are set in Code.gs</p></div>';
+    }
+
+    // ── Initial load ──
+    loadData();
+  </script>
+
+</body>
+
+</html>
